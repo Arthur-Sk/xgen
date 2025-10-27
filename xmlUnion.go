@@ -40,8 +40,11 @@ func (opt *Options) OnUnion(ele xml.StartElement, protoTree []interface{}) (err 
 
 // EndUnion handles parsing event on the union end elements.
 func (opt *Options) EndUnion(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.SimpleType.Len() > 0 {
-		opt.InUnion = false
-	}
+	// Always clear the union context when the </union> tag is closed.
+	// Previously, this flag was only cleared when a SimpleType was still on the stack,
+	// which could leave InUnion stuck to true if the SimpleType got popped earlier
+	// by a nested handler (e.g., attribute/element inline restrictions). That caused
+	// subsequent named simpleTypes to be skipped from persistence.
+	opt.InUnion = false
 	return
 }

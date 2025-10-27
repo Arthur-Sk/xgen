@@ -14,12 +14,12 @@ import "encoding/xml"
 // simpleType element defines a simple type and specifies the constraints and
 // information about the values of attributes or text-only elements.
 func (opt *Options) OnSimpleType(ele xml.StartElement, protoTree []interface{}) (err error) {
-	if opt.SimpleType.Len() == 0 {
-		opt.SimpleType.Push(&SimpleType{})
-	}
+	// Start a new simple type scope when encountering a simpleType element.
+	opt.SimpleType.Push(&SimpleType{})
 	if opt.CurrentEle == "attributeGroup" {
-		// return
+		// keep parsing, attributeGroup can contain nested simpleTypes
 	}
+
 	for _, attr := range ele.Attr {
 		if attr.Name.Local == "name" {
 			opt.CurrentEle = opt.InElement
@@ -31,18 +31,29 @@ func (opt *Options) OnSimpleType(ele xml.StartElement, protoTree []interface{}) 
 
 // EndSimpleType handles parsing event on the simpleType end elements.
 func (opt *Options) EndSimpleType(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.SimpleType.Len() > 0 && opt.Attribute.Len() > 0 {
-		opt.Attribute.Peek().(*Attribute).Type = opt.SimpleType.Pop().(*SimpleType).Base
+	if opt.SimpleType.Len() == 0 {
 		return
 	}
-	if ele.Name.Local == opt.CurrentEle && opt.ComplexType.Len() == 1 {
-		opt.ProtoTree = append(opt.ProtoTree, opt.ComplexType.Pop())
-		opt.CurrentEle = ""
+	st := opt.SimpleType.Peek().(*SimpleType)
+	// If this is an anonymous simpleType defined inline for an attribute, assign its base to the attribute.
+	if opt.Attribute.Len() > 0 && st.Name == "" {
+		opt.Attribute.Peek().(*Attribute).Type = st.Base
+		opt.SimpleType.Pop()
+		return
 	}
-
-	if ele.Name.Local == opt.CurrentEle && !opt.InUnion {
+	// If this is an anonymous simpleType defined inline for an element, assign its base to the element.
+	if opt.Element.Len() > 0 && st.Name == "" {
+		opt.Element.Peek().(*Element).Type = st.Base
+		opt.SimpleType.Pop()
+		return
+	}
+	// Persist named simpleTypes (top-level or nested) and anonymous non-inline unions/lists
+	if !opt.InUnion {
+		// temporary debug
+		// fmt.Println("Add simpleType:", st.Name, "base:", st.Base)
 		opt.ProtoTree = append(opt.ProtoTree, opt.SimpleType.Pop())
 		opt.CurrentEle = ""
+		return
 	}
 	return
 }
