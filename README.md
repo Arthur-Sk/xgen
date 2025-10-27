@@ -3,10 +3,10 @@
 <br>
 
 <p align="center">
-    <a href="https://github.com/xuri/xgen/actions/workflows/go.yml"><img src="https://github.com/xuri/xgen/actions/workflows/go.yml/badge.svg" alt="Build Status"></a>
+    <a href="https://github.com/Arthur-Sk/xgen/actions/workflows/go.yml"><img src="https://github.com/Arthur-Sk/xgen/actions/workflows/go.yml/badge.svg" alt="Build Status"></a>
     <a href="https://codecov.io/gh/xuri/xgen"><img src="https://codecov.io/gh/xuri/xgen/branch/master/graph/badge.svg" alt="Code Coverage"></a>
-    <a href="https://goreportcard.com/report/github.com/xuri/xgen"><img src="https://goreportcard.com/badge/github.com/xuri/xgen" alt="Go Report Card"></a>
-    <a href="https://pkg.go.dev/github.com/xuri/xgen"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white" alt="go.dev"></a>
+    <a href="https://goreportcard.com/report/github.com/Arthur-Sk/xgen"><img src="https://goreportcard.com/badge/github.com/Arthur-Sk/xgen" alt="Go Report Card"></a>
+    <a href="https://pkg.go.dev/github.com/Arthur-Sk/xgen"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white" alt="go.dev"></a>
     <a href="https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/license-bsd-orange.svg" alt="Licenses"></a>
     <a href="https://www.paypal.me/xuri"><img src="https://img.shields.io/badge/Donate-PayPal-green.svg" alt="Donate"></a>
 </p>
@@ -15,14 +15,14 @@
 
 ## Introduction
 
-xgen is a library written in pure Go providing a set of functions that allow you to parse XSD (XML schema definition) files. This library needs Go version 1.23.0 or later. The full API docs can be seen using go's built-in documentation tool, or online at [go.dev](https://pkg.go.dev/github.com/xuri/xgen).
+xgen is a library written in pure Go providing a set of functions that allow you to parse XSD (XML schema definition) files. This library needs Go version 1.23.0 or later. The full API docs can be seen using go's built-in documentation tool, or online at [go.dev](https://pkg.go.dev/github.com/Arthur-Sk/xgen).
 
 `xgen` commands automatically compiles XML schema files into the multi-language type or class declarations code.
 
 Install the command line tool first, installing executables with `go install`
 
 ```sh
-go install github.com/xuri/xgen/cmd/xgen@latest
+go install github.com/Arthur-Sk/xgen/cmd/xgen@latest
 ```
 
 The command below will walk on the `xsd` path and generate Go language struct code under the `output` directory.

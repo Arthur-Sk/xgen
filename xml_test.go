@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	schema "github.com/Arthur-Sk/xgen/test/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	schema "github.com/xuri/xgen/test/go"
 )
 
 // TestGeneratedGo runs through test cases to validate Go generated structs. Each test case
