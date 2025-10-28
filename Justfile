@@ -8,4 +8,4 @@ go-build:
   go build ./cmd/xgen/xgen.go
 
 xsd-gen:
-  ./xgen -p out -i source/common_types.xsd -o out/commonTypes.go -l Go
+  go run cmd/xgen/xgen.go -p out -i source/common_types.xsd -o out/commonTypes.go -l Go
