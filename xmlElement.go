@@ -19,6 +19,7 @@ func (opt *Options) OnElement(ele xml.StartElement, protoTree []interface{}) (er
 	for _, attr := range ele.Attr {
 		if attr.Name.Local == "ref" {
 			e.Name = attr.Value
+			e.TypeRef = attr.Value
 			e.Type, err = opt.GetValueType(attr.Value, protoTree)
 			if err != nil {
 				return
@@ -29,6 +30,7 @@ func (opt *Options) OnElement(ele xml.StartElement, protoTree []interface{}) (er
 			e.Name = attr.Value
 		}
 		if attr.Name.Local == "type" {
+			e.TypeRef = attr.Value
 			e.Type, err = opt.GetValueType(attr.Value, protoTree)
 			if err != nil {
 				return
@@ -90,8 +92,12 @@ func (opt *Options) OnElement(ele xml.StartElement, protoTree []interface{}) (er
 		if element != nil && element.Type == e.Type {
 			element.Plural = element.Plural || e.Plural
 			opt.ComplexType.Peek().(*ComplexType).Elements[i] = *element
+			// Push a copy onto the element stack so inline restrictions can update type and be reflected later
+			opt.Element.Push(&e)
 		} else {
 			opt.ComplexType.Peek().(*ComplexType).Elements = append(opt.ComplexType.Peek().(*ComplexType).Elements, e)
+			// Push a copy onto the element stack so inline restrictions can update type and be reflected later
+			opt.Element.Push(&e)
 		}
 		return
 	}

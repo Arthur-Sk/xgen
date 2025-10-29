@@ -8,17 +8,31 @@
 
 package xgen
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"strconv"
+)
+
+// OnMaxExclusive handles parsing event on the maxExclusive start element.
+func (opt *Options) OnMaxExclusive(ele xml.StartElement, protoTree []interface{}) (err error) {
+	for _, attr := range ele.Attr {
+		if attr.Name.Local == "value" {
+			if st, ok := opt.SimpleType.Peek().(*SimpleType); ok && st != nil {
+				if v, e := strconv.ParseFloat(attr.Value, 64); e == nil {
+					st.Restriction.Max = v
+					st.Restriction.HasMax = true
+					st.Restriction.MaxExclusive = true
+				}
+			}
+		}
+	}
+	return
+}
 
 // EndMaxExclusive handles parsing event on the maxExclusive end elements.
 // MaxExclusive specifies the upper bounds for numeric values (the value must
 // be less than this value).
 func (opt *Options) EndMaxExclusive(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.SimpleType.Len() > 0 && opt.Element.Len() > 0 {
-		if opt.Element.Peek().(*Element).Type, err = opt.GetValueType(opt.SimpleType.Pop().(*SimpleType).Base, opt.ProtoTree); err != nil {
-			return
-		}
-		opt.CurrentEle = ""
-	}
+	// Defer applying restrictions until EndRestriction
 	return
 }

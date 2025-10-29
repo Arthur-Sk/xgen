@@ -100,6 +100,7 @@ func (opt *Options) Parse() (err error) {
 
 	decoder := xml.NewDecoder(xmlFile)
 	decoder.CharsetReader = charset.NewReaderLabel
+	decoder.Strict = false
 	for {
 		token, _ := decoder.Token()
 		if token == nil {
@@ -138,11 +139,12 @@ func (opt *Options) Parse() (err error) {
 			os.Exit(1)
 		}
 		generator := &CodeGenerator{
-			Lang:      opt.Lang,
-			Package:   opt.Package,
-			File:      path,
-			ProtoTree: opt.ProtoTree,
-			StructAST: map[string]string{},
+			Lang:           opt.Lang,
+			Package:        opt.Package,
+			File:           path,
+			ProtoTree:      opt.ProtoTree,
+			StructAST:      map[string]string{},
+			ValidatedTypes: map[string]bool{},
 		}
 		funcName := fmt.Sprintf("Gen%s", MakeFirstUpperCase(opt.Lang))
 		if err = callFuncByName(generator, funcName, []reflect.Value{}); err != nil {

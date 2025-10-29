@@ -22,18 +22,8 @@ func (opt *Options) OnRestriction(ele xml.StartElement, protoTree []interface{})
 				return
 			}
 			if opt.SimpleType.Peek() != nil {
-				if opt.Element.Len() > 0 {
-					opt.Element.Peek().(*Element).Type, err = opt.GetValueType(valueType, protoTree)
-					return
-				}
-
-				opt.SimpleType.Peek().(*SimpleType).Base, err = opt.GetValueType(valueType, protoTree)
-				if err != nil {
-					return
-				}
-				if opt.SimpleType.Peek().(*SimpleType).Name == "" {
-					opt.SimpleType.Peek().(*SimpleType).Name = attr.Value
-				}
+				// Record the base on the current simpleType; defer applying to element/attribute until EndRestriction
+				opt.SimpleType.Peek().(*SimpleType).Base = valueType
 			}
 		}
 	}
@@ -42,17 +32,34 @@ func (opt *Options) OnRestriction(ele xml.StartElement, protoTree []interface{})
 
 // EndRestriction handles parsing event on the restriction end elements.
 func (opt *Options) EndRestriction(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.Attribute.Len() > 0 && opt.SimpleType.Peek() != nil {
-		opt.Attribute.Peek().(*Attribute).Type, err = opt.GetValueType(opt.SimpleType.Pop().(*SimpleType).Base, opt.ProtoTree)
+	if opt.SimpleType.Peek() == nil {
+		return
+	}
+	// Only apply and pop for inline restrictions within attribute/element
+	if opt.Attribute.Len() > 0 {
+		st := opt.SimpleType.Pop().(*SimpleType)
+		attr := opt.Attribute.Peek().(*Attribute)
+		attr.Type, err = opt.GetValueType(st.Base, opt.ProtoTree)
 		if err != nil {
 			return
 		}
+		attr.Restriction = st.Restriction
 		opt.CurrentEle = ""
+		return
 	}
-	if !opt.Element.Empty() {
+	if opt.Element.Len() > 0 {
+		st := opt.SimpleType.Pop().(*SimpleType)
+		ele := opt.Element.Peek().(*Element)
+		ele.Type, err = opt.GetValueType(st.Base, opt.ProtoTree)
+		if err != nil {
+			return
+		}
+		ele.Restriction = st.Restriction
+		opt.CurrentEle = ""
 		if !opt.ComplexType.Empty() && len(opt.ComplexType.Peek().(*ComplexType).Elements) > 0 {
-			opt.ComplexType.Peek().(*ComplexType).Elements[len(opt.ComplexType.Peek().(*ComplexType).Elements)-1] = *opt.Element.Peek().(*Element)
+			opt.ComplexType.Peek().(*ComplexType).Elements[len(opt.ComplexType.Peek().(*ComplexType).Elements)-1] = *ele
 		}
 	}
+	// For named simpleType restrictions, keep the simpleType on stack; EndSimpleType will handle popping and persisting
 	return
 }
