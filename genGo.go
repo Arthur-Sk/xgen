@@ -758,8 +758,13 @@ func (gen *CodeGenerator) generateSimpleTypeValidator(typeName, base string, r *
 		// Pattern check
 		if r.PatternStr != "" {
 			gen.ImportRegexp = true
-			// Embed the pattern as a string literal in code for the matcher, but keep it as a runtime value in the error message
-			fmt.Fprintf(&b, "\tif ok := regexp.MustCompile(%q).MatchString(string(v)); !ok { return fmt.Errorf(\"%%s does not match pattern: %%q\", %q, %q) }\n", r.PatternStr, typeName, r.PatternStr)
+			// Anchor the pattern to match the entire string (consistent with go-playground validator behavior)
+			pattern := r.PatternStr
+			if len(pattern) > 0 {
+				pattern = "^" + pattern + "$"
+			}
+			// Embed the anchored pattern as a string literal for the matcher, but keep original pattern text in the error message
+			fmt.Fprintf(&b, "\tif ok := regexp.MustCompile(%q).MatchString(string(v)); !ok { return fmt.Errorf(%q, %q, %q) }\n", pattern, "%s does not match pattern: %q", typeName, r.PatternStr)
 			needsFmt = true
 		}
 		// Enum check
@@ -911,7 +916,11 @@ func (gen *CodeGenerator) generateRestrictionChecks(varExpr, base, subjectName s
 		}
 		if r.PatternStr != "" {
 			gen.ImportRegexp = true
-			fmt.Fprintf(&b, "\tif ok := regexp.MustCompile(%q).MatchString(string(%s)); !ok { return fmt.Errorf(\"%s does not match pattern: %%q\", %q) }\n", r.PatternStr, varExpr, subjectName, r.PatternStr)
+			pattern := r.PatternStr
+			if len(pattern) > 0 {
+				pattern = "^" + pattern + "$"
+			}
+			fmt.Fprintf(&b, "\tif ok := regexp.MustCompile(%q).MatchString(string(%s)); !ok { return fmt.Errorf(%q, %q, %q) }\n", pattern, varExpr, "%s does not match pattern: %q", subjectName, r.PatternStr)
 		}
 		if len(r.Enum) > 0 {
 			b.WriteString("\t{")
