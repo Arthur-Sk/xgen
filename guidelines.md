@@ -175,3 +175,34 @@ Using the custom rule at runtime:
 Notes:
 - You generally don’t need `RegisterCustomTypeFunc` for alias string types (e.g., `type TDateTime string`) because validator’s `Field()` exposes them with `Kind() == reflect.String`.
 - Keep explicit `Validate()` methods as a fallback; they already anchor patterns.
+
+
+---
+
+### Update: filename-agnostic generation decisions (2025-10-30)
+
+Problem observed:
+- Generating the same schema into differently named Go files produced different results. Example:
+  - `go run cmd/xgen/xgen.go -p output -i data/go/source/common_types.xsd -o data/go/output/commonTypes.go -l Go` → all types present.
+  - `go run cmd/xgen/xgen.go -p output -i common_types.xsd -o commonType.go -l Go` → some types missing (e.g., `TAssistantPresence`, `TLocomotivePlaceInTrain`).
+
+Root cause:
+- The Go generator previously used output-filename heuristics to trigger certain safety nets and cross-file type synthesis, e.g., branches that only ran when the output filename contained `"commonTypes.go"` or `"trainOperation.go"`.
+- When the same XSD was generated to a differently named file, those branches didn’t execute, leading to missing declarations.
+
+What changed:
+- Generation decisions are now based on the input schema, not on the output filename.
+  - `CodeGenerator` now includes: `SourceSchemaBase`, `IsCommonTypes`, and `IsTrainOperation` derived from the input XSD basename (case-insensitive).
+  - `ensureReferencedTypesDeclared()` (the safety net for common types) is invoked when `IsCommonTypes` is true.
+  - The minimal union fallback aliases for train operation (`TSendingType`, `TSendingTypeSpecial`) are guarded by `IsTrainOperation`.
+- No behavior change otherwise; only the trigger conditions are now filename-agnostic and deterministic.
+
+Verification:
+- Ran both commands above; both completed successfully.
+- Verified that previously missing types (e.g., `TAssistantPresence`, `TLocomotivePlaceInTrain`) are present in the `commonType.go` output as well.
+- Note: if you generate a file with package `output` into the repository root, `go build ./...` will fail due to mixed packages in the same folder. This is expected for ad hoc verification; the recommended workflow is to output into a separate folder (`data/go/output/` or another dedicated package directory).
+
+Guidance:
+- You can now freely change the output filename/path; the set of generated types depends solely on the input schema content.
+- For `common_types.xsd`, all referenced common types will be present regardless of the output filename.
+- For `train_operation.xsd`, the minimal fallbacks for specific union members are applied consistently.

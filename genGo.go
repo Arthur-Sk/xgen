@@ -203,11 +203,9 @@ func (gen *CodeGenerator) GenGo() error {
 			}
 		}
 	}
-	// As a final safety net for cross-file references, ensure types referenced in
-	// this file are declared here when generating the shared common types file.
-	if strings.Contains(gen.File, "commonTypes.go") {
-		gen.ensureReferencedTypesDeclared()
-	}
+
+	gen.ensureReferencedTypesDeclared()
+
 	f, err := os.Create(gen.FileWithExtension(".go"))
 	if err != nil {
 		return err
@@ -272,6 +270,19 @@ func genGoFieldType(name string) string {
 		return "*" + fieldType
 	}
 	return "interface{}"
+}
+
+// isGoTypeDeclared reports whether a Go type name has already been declared
+// either via an XSD named type (simpleType/complexType/group/attributeGroup)
+// or via a previously synthesized alias. This helps avoid duplicate type declarations
+// when global elements/attributes reuse the same names as types.
+func (gen *CodeGenerator) isGoTypeDeclared(goName string) bool {
+	for k := range gen.StructAST {
+		if k == goName || genGoFieldName(k, false) == goName {
+			return true
+		}
+	}
+	return false
 }
 
 // GoSimpleType generates code for simple type XML schema in Go language
@@ -571,30 +582,15 @@ func (gen *CodeGenerator) GoAttributeGroup(v *AttributeGroup) {
 
 // GoElement generates code for element XML schema in Go language syntax.
 func (gen *CodeGenerator) GoElement(v *Element) {
-	if _, ok := gen.StructAST[v.Name]; !ok {
-		var plural string
-		if v.Plural {
-			plural = "[]"
-		}
-		content := fmt.Sprintf("\t%s%s\n", plural, genGoFieldType(getBasefromSimpleType(trimNSPrefix(v.Type), gen.ProtoTree)))
-		gen.StructAST[v.Name] = content
-		fieldName := genGoFieldName(v.Name, false)
-		gen.Field += fmt.Sprintf("%stype %s%s", genFieldComment(fieldName, v.Doc, "//"), fieldName, gen.StructAST[v.Name])
-	}
+	// Do not emit standalone Go types for global elements. Their types are already
+	// represented by named simpleTypes/complexTypes. Emitting both causes duplicates.
+	return
 }
 
 // GoAttribute generates code for attribute XML schema in Go language syntax.
 func (gen *CodeGenerator) GoAttribute(v *Attribute) {
-	if _, ok := gen.StructAST[v.Name]; !ok {
-		var plural string
-		if v.Plural {
-			plural = "[]"
-		}
-		content := fmt.Sprintf("\t%s%s\n", plural, genGoFieldType(getBasefromSimpleType(trimNSPrefix(v.Type), gen.ProtoTree)))
-		gen.StructAST[v.Name] = content
-		fieldName := genGoFieldName(v.Name, true)
-		gen.Field += fmt.Sprintf("%stype %s%s", genFieldComment(fieldName, v.Doc, "//"), fieldName, gen.StructAST[v.Name])
-	}
+	// Do not emit standalone Go types for global attributes to avoid duplicate names.
+	return
 }
 
 func (gen *CodeGenerator) FileWithExtension(extension string) string {
@@ -662,44 +658,8 @@ func (gen *CodeGenerator) ensureNamedType(xsdOrGoName string) {
 		st = gen.findSimpleType(lower)
 	}
 	if st == nil {
-		// Not found in current schema. If generating the shared common types file,
-		// synthesize a minimal alias to avoid undefined references across files.
-		if strings.Contains(gen.File, "commonTypes.go") {
-			key := name
-			if _, ok := gen.StructAST[key]; ok {
-				return
-			}
-			base := getBasefromSimpleType(name, gen.ProtoTree)
-			if base == name || base == "" {
-				if bt, ok := getBuildInTypeByLang(name, "Go"); ok && bt != "" {
-					base = bt
-				} else {
-					base = "string"
-				}
-			}
-			declType := genGoFieldType(base)
-			if strings.HasPrefix(declType, "*") {
-				declType = strings.TrimPrefix(declType, "*")
-			}
-			content := fmt.Sprintf(" %s\n", declType)
-			gen.StructAST[key] = content
-			fieldName := genGoFieldName(name, true)
-			gen.Field += fmt.Sprintf("%stype %s%s", genFieldComment(fieldName, "", "//"), fieldName, content)
-			return
-		}
-		// For trainOperation.go, synthesize minimal aliases for specific cross-file
-		// union member types that are otherwise not emitted here.
-		if strings.Contains(gen.File, "trainOperation.go") {
-			goName := genGoFieldName(name, false)
-			if goName == "TSendingType" || goName == "TSendingTypeSpecial" {
-				key := goName
-				if _, ok := gen.StructAST[key]; !ok {
-					content := " int\n"
-					gen.StructAST[key] = content
-					gen.Field += fmt.Sprintf("%stype %s%s", genFieldComment(key, "", "//"), key, content)
-				}
-			}
-		}
+		// Not found in this schema: do not synthesize a placeholder here.
+		// Any missing referenced types will be handled by a single safety net at the end.
 		return
 	}
 	// Use the XSD name as key for StructAST to avoid duplicates
