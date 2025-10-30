@@ -8,17 +8,30 @@
 
 package xgen
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"strconv"
+)
+
+// OnMinInclusive handles parsing event on the minInclusive start element.
+func (opt *Options) OnMinInclusive(ele xml.StartElement, protoTree []interface{}) (err error) {
+	for _, attr := range ele.Attr {
+		if attr.Name.Local == "value" {
+			if st, ok := opt.SimpleType.Peek().(*SimpleType); ok && st != nil {
+				if v, e := strconv.ParseFloat(attr.Value, 64); e == nil {
+					st.Restriction.Min = v
+					st.Restriction.HasMin = true
+					st.Restriction.MinExclusive = false
+				}
+			}
+		}
+	}
+	return
+}
 
 // EndMinInclusive handles parsing event on the minInclusive end elements.
 // MinInclusive specifies the lower bounds for numeric values (the value must
 // be greater than or equal to this value).
 func (opt *Options) EndMinInclusive(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.SimpleType.Len() > 0 && opt.Element.Len() > 0 {
-		if opt.Element.Peek().(*Element).Type, err = opt.GetValueType(opt.SimpleType.Pop().(*SimpleType).Base, opt.ProtoTree); err != nil {
-			return
-		}
-		opt.CurrentEle = ""
-	}
 	return
 }

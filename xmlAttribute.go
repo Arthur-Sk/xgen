@@ -19,6 +19,7 @@ func (opt *Options) OnAttribute(ele xml.StartElement, protoTree []interface{}) (
 	for _, attr := range ele.Attr {
 		if attr.Name.Local == "ref" {
 			attribute.Name = attr.Value
+			attribute.TypeRef = attr.Value
 			attribute.Type, err = opt.GetValueType(attr.Value, protoTree)
 			if err != nil {
 				return
@@ -28,6 +29,7 @@ func (opt *Options) OnAttribute(ele xml.StartElement, protoTree []interface{}) (
 			attribute.Name = attr.Value
 		}
 		if attr.Name.Local == "type" {
+			attribute.TypeRef = attr.Value
 			attribute.Type, err = opt.GetValueType(attr.Value, protoTree)
 			if err != nil {
 				return

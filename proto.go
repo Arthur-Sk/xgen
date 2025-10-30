@@ -32,15 +32,17 @@ type SimpleType struct {
 // mechanism of element substitution groups.
 // https://www.w3.org/TR/xmlschema-1/#cElement_Declarations
 type Element struct {
-	Doc      string
-	Name     string
-	Wildcard bool
-	Type     string
-	Abstract bool
-	Plural   bool
-	Optional bool
-	Nillable bool
-	Default  string
+	Doc         string
+	Name        string
+	Wildcard    bool
+	Type        string
+	TypeRef     string
+	Restriction Restriction
+	Abstract    bool
+	Plural      bool
+	Optional    bool
+	Nillable    bool
+	Default     string
 }
 
 // Attribute declarations provide for: Local validation of attribute
@@ -48,12 +50,14 @@ type Element struct {
 // or fixed values for attribute information items.
 // https://www.w3.org/TR/xmlschema-1/structures.html#element-attribute
 type Attribute struct {
-	Name     string
-	Doc      string
-	Type     string
-	Plural   bool
-	Default  string
-	Optional bool
+	Name        string
+	Doc         string
+	Type        string
+	TypeRef     string
+	Restriction Restriction
+	Plural      bool
+	Default     string
+	Optional    bool
 }
 
 // ComplexType definitions are identified by their {name} and {target
@@ -131,6 +135,14 @@ type Restriction struct {
 	Precision            int
 	Enum                 []string
 	Min, Max             float64
+	HasMin, HasMax       bool
+	MinExclusive         bool
+	MaxExclusive         bool
 	MinLength, MaxLength int
+	HasMinLength         bool
+	HasMaxLength         bool
+	Length               int
+	HasLength            bool
 	Pattern              *regexp.Regexp
+	PatternStr           string
 }

@@ -35,22 +35,32 @@ func (opt *Options) EndSimpleType(ele xml.EndElement, protoTree []interface{}) (
 		return
 	}
 	st := opt.SimpleType.Peek().(*SimpleType)
-	// If this is an anonymous simpleType defined inline for an attribute, assign its base to the attribute.
+	// If this is an anonymous simpleType defined inline for an attribute, assign its resolved base and restriction to the attribute.
 	if opt.Attribute.Len() > 0 && st.Name == "" {
-		opt.Attribute.Peek().(*Attribute).Type = st.Base
+		attr := opt.Attribute.Peek().(*Attribute)
+		if vt, err2 := opt.GetValueType(st.Base, opt.ProtoTree); err2 == nil && vt != "" {
+			attr.Type = vt
+		} else {
+			attr.Type = st.Base
+		}
+		attr.Restriction = st.Restriction
 		opt.SimpleType.Pop()
 		return
 	}
-	// If this is an anonymous simpleType defined inline for an element, assign its base to the element.
+	// If this is an anonymous simpleType defined inline for an element, assign its resolved base and restriction to the element.
 	if opt.Element.Len() > 0 && st.Name == "" {
-		opt.Element.Peek().(*Element).Type = st.Base
+		ele := opt.Element.Peek().(*Element)
+		if vt, err2 := opt.GetValueType(st.Base, opt.ProtoTree); err2 == nil && vt != "" {
+			ele.Type = vt
+		} else {
+			ele.Type = st.Base
+		}
+		ele.Restriction = st.Restriction
 		opt.SimpleType.Pop()
 		return
 	}
-	// Persist named simpleTypes (top-level or nested) and anonymous non-inline unions/lists
-	if !opt.InUnion {
-		// temporary debug
-		// fmt.Println("Add simpleType:", st.Name, "base:", st.Base)
+	// Persist named simpleTypes (top-level or nested) regardless of other stacks; inline anonymous handled above
+	if st.Name != "" {
 		opt.ProtoTree = append(opt.ProtoTree, opt.SimpleType.Pop())
 		opt.CurrentEle = ""
 		return

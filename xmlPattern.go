@@ -8,23 +8,25 @@
 
 package xgen
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+)
+
+// OnPattern handles parsing event on the pattern start element.
+func (opt *Options) OnPattern(ele xml.StartElement, protoTree []interface{}) (err error) {
+	for _, attr := range ele.Attr {
+		if attr.Name.Local == "value" {
+			if st, ok := opt.SimpleType.Peek().(*SimpleType); ok && st != nil {
+				st.Restriction.PatternStr = attr.Value
+			}
+		}
+	}
+	return
+}
 
 // EndPattern handles parsing event on the pattern end elements. Pattern
 // defines the exact sequence of characters that are acceptable.
 func (opt *Options) EndPattern(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.Attribute.Len() > 0 && opt.SimpleType.Peek() != nil {
-		opt.Attribute.Peek().(*Attribute).Type, err = opt.GetValueType(opt.SimpleType.Pop().(*SimpleType).Base, opt.ProtoTree)
-		if err != nil {
-			return
-		}
-		opt.CurrentEle = ""
-	}
-	if opt.SimpleType.Len() > 0 && opt.Element.Len() > 0 {
-		if opt.Element.Peek().(*Element).Type, err = opt.GetValueType(opt.SimpleType.Pop().(*SimpleType).Base, opt.ProtoTree); err != nil {
-			return
-		}
-		opt.CurrentEle = ""
-	}
+	// Defer applying restrictions until EndRestriction
 	return
 }

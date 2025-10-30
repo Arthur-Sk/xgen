@@ -14,11 +14,6 @@ import "encoding/xml"
 // TotalDigits specifies the exact number of digits allowed. Must be greater
 // than zero.
 func (opt *Options) EndTotalDigits(ele xml.EndElement, protoTree []interface{}) (err error) {
-	if opt.SimpleType.Len() > 0 && opt.Element.Len() > 0 {
-		if opt.Element.Peek().(*Element).Type, err = opt.GetValueType(opt.SimpleType.Pop().(*SimpleType).Base, opt.ProtoTree); err != nil {
-			return
-		}
-		opt.CurrentEle = ""
-	}
+	// Defer applying restrictions until EndRestriction
 	return
 }
