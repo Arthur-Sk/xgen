@@ -206,3 +206,47 @@ Guidance:
 - You can now freely change the output filename/path; the set of generated types depends solely on the input schema content.
 - For `common_types.xsd`, all referenced common types will be present regardless of the output filename.
 - For `train_operation.xsd`, the minimal fallbacks for specific union members are applied consistently.
+
+
+---
+
+### Update: optional omission of XMLName fields (-omit-xmlname) (2025-10-31)
+
+Problem / request:
+- Some consumers prefer not to have the automatically generated `XMLName xml.Name` field on each generated struct.
+
+What changed:
+- Added a CLI flag `-omit-xmlname` to the `xgen` command (Go generation only). When provided, the generator will not emit the `XMLName xml.Name` field in generated Go structs.
+- Default behavior remains unchanged (XMLName is emitted) when the flag is not passed.
+
+Usage example:
+- Default (keep XMLName):
+  ```bash
+  go run cmd/xgen/xgen.go -p output -i data/go/source/common_types.xsd -o data/go/output/commonTypes.go -l Go
+  ```
+- Omit XMLName fields:
+  ```bash
+  go run cmd/xgen/xgen.go -omit-xmlname -p output -i data/go/source/common_types.xsd -o data/go/output/commonTypes.go -l Go
+  ```
+
+Details:
+- Affected constructs in Go generation:
+  - complexType structs
+  - group structs
+  - attributeGroup structs
+  - simpleType union wrapper structs (the anonymous struct used for unions)
+- Unaffected:
+  - Named simple types that are just aliases (e.g., `type TDate string`) never had `XMLName` anyway.
+  - Any fields that legitimately use the built-in XSD `QName` type still map to Go `xml.Name`. The generator will import `encoding/xml` automatically if such fields are present.
+
+Imports behavior:
+- `encoding/xml` is only imported when needed. If `-omit-xmlname` is set and the output does not otherwise use `xml.Name`, the `encoding/xml` import will not be added.
+
+Trade-offs and notes:
+- `XMLName` is sometimes helpful for explicitly controlling the top-level element name during (un)marshaling and for round-tripping when type names differ from element names. If your code does not rely on it, omitting it reduces struct clutter.
+- This option is Go-specific and does not affect other language generators.
+
+Verification performed:
+- Built the generator and ran it with and without `-omit-xmlname`.
+- Confirmed that, with the flag, generated structs do not contain `XMLName xml.Name` and there are no unused imports.
+- Confirmed that default behavior (no flag) remains unchanged.

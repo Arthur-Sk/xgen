@@ -35,11 +35,12 @@ import (
 // Config holds user-defined overrides and filters that are used when
 // generating source code from an XSD document.
 type Config struct {
-	I       string
-	O       string
-	Pkg     string
-	Lang    string
-	Version string
+	I           string
+	O           string
+	Pkg         string
+	Lang        string
+	Version     string
+	OmitXMLName bool
 }
 
 // Cfg are the default config for xgen. The default package name and output
@@ -64,11 +65,12 @@ func parseFlags() *Config {
 	oPtr := flag.String("o", "xgen_out", "Output file path or directory for the generated code")
 	pkgPtr := flag.String("p", "", "Specify the package name")
 	langPtr := flag.String("l", "", "Specify the language of generated code")
+	omitXMLNamePtr := flag.Bool("omit-xmlname", false, "Omit generating XMLName fields in Go structs")
 	verPtr := flag.Bool("v", false, "Show version and exit")
 	helpPtr := flag.Bool("h", false, "Show this help and exit")
 	flag.Parse()
 	if *helpPtr {
-		fmt.Printf("xgen version: %s\r\nCopyright (c) 2020 - 2025 Ri Xu https://xuri.me All rights reserved.\r\n\r\nUsage:\r\n$ xgen [<flag> ...] <XSD file or directory> ...\n  -i <path>\tInput file path or directory for the XML schema definition\r\n  -o <path>\tOutput file path or directory for the generated code\r\n  -p     \tSpecify the package name\r\n  -l      \tSpecify the language of generated code (Go/C/Java/Rust/TypeScript)\r\n  -h     \tOutput this help and exit\r\n  -v     \tOutput version and exit\r\n", Cfg.Version)
+		fmt.Printf("xgen version: %s\r\nCopyright (c) 2020 - 2025 Ri Xu https://xuri.me All rights reserved.\r\n\r\nUsage:\r\n$ xgen [<flag> ...] <XSD file or directory> ...\n  -i <path>\tInput file path or directory for the XML schema definition\r\n  -o <path>\tOutput file path or directory for the generated code\r\n  -p     \tSpecify the package name\r\n  -l      \tSpecify the language of generated code (Go/C/Java/Rust/TypeScript)\r\n  -omit-xmlname\tOmit generating XMLName fields in Go structs (default: false)\r\n  -h     \tOutput this help and exit\r\n  -v     \tOutput version and exit\r\n", Cfg.Version)
 		os.Exit(0)
 	}
 	if *verPtr {
@@ -95,6 +97,7 @@ func parseFlags() *Config {
 	if *pkgPtr != "" {
 		Cfg.Pkg = *pkgPtr
 	}
+	Cfg.OmitXMLName = *omitXMLNamePtr
 	return &Cfg
 }
 
@@ -119,6 +122,7 @@ func main() {
 			ParseFileMap:        make(map[string][]interface{}),
 			ProtoTree:           make([]interface{}, 0),
 			RemoteSchema:        make(map[string][]byte),
+			OmitXMLName:         cfg.OmitXMLName,
 		}).Parse(); err != nil {
 			fmt.Printf("process error on %s: %s\r\n", file, err.Error())
 			os.Exit(1)

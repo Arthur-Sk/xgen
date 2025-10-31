@@ -37,6 +37,9 @@ type Options struct {
 	ProtoTree           []interface{}
 	RemoteSchema        map[string][]byte
 
+	// Generation options
+	OmitXMLName bool
+
 	InElement        string
 	CurrentEle       string
 	InGroup          int
@@ -145,6 +148,7 @@ func (opt *Options) Parse() (err error) {
 			ProtoTree:      opt.ProtoTree,
 			StructAST:      map[string]string{},
 			ValidatedTypes: map[string]bool{},
+			EmitXMLName:    !opt.OmitXMLName,
 		}
 		funcName := fmt.Sprintf("Gen%s", MakeFirstUpperCase(opt.Lang))
 		if err = callFuncByName(generator, funcName, []reflect.Value{}); err != nil {

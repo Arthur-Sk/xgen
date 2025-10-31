@@ -31,6 +31,7 @@ type CodeGenerator struct {
 	StructAST         map[string]string
 	TypeNameMap       map[string]string // XSD type name -> Go type name used
 	ValidatedTypes    map[string]bool   // Go type names that have Validate method
+	EmitXMLName       bool              // When true, emit XMLName xml.Name fields (default true)
 }
 
 // buildValidateTag builds a go-playground/validator tag string for the given
@@ -211,6 +212,10 @@ func (gen *CodeGenerator) GenGo() error {
 	}
 	defer f.Close()
 	var importPackage, packages string
+	// If any emitted content uses xml.Name (e.g., QName), ensure we import encoding/xml.
+	if !gen.ImportEncodingXML && strings.Contains(gen.Field, "xml.Name") {
+		gen.ImportEncodingXML = true
+	}
 	if gen.ImportTime {
 		packages += "\t\"time\"\n"
 	}
@@ -304,7 +309,7 @@ func (gen *CodeGenerator) GoSimpleType(v *SimpleType) {
 		if _, ok := gen.StructAST[v.Name]; !ok {
 			content := " struct {\n"
 			fieldName := genGoFieldName(v.Name, true)
-			if fieldName != v.Name {
+			if gen.EmitXMLName && fieldName != v.Name {
 				gen.ImportEncodingXML = true
 				content += fmt.Sprintf("\tXMLName\txml.Name\t`xml:\"%s\"`\n", v.Name)
 			}
@@ -341,7 +346,7 @@ func (gen *CodeGenerator) GoComplexType(v *ComplexType) {
 	if _, ok := gen.StructAST[v.Name]; !ok {
 		content := " struct {\n"
 		fieldName := genGoFieldName(v.Name, true)
-		if fieldName != v.Name {
+		if gen.EmitXMLName && fieldName != v.Name {
 			gen.ImportEncodingXML = true
 			content += fmt.Sprintf("\tXMLName\txml.Name\t`xml:\"%s\"`\n", v.Name)
 		}
@@ -507,7 +512,7 @@ func (gen *CodeGenerator) GoGroup(v *Group) {
 	if _, ok := gen.StructAST[v.Name]; !ok {
 		content := " struct {\n"
 		fieldName := genGoFieldName(v.Name, true)
-		if fieldName != v.Name {
+		if gen.EmitXMLName && fieldName != v.Name {
 			gen.ImportEncodingXML = true
 			content += fmt.Sprintf("\tXMLName\txml.Name\t`xml:\"%s\"`\n", v.Name)
 		}
@@ -542,7 +547,7 @@ func (gen *CodeGenerator) GoAttributeGroup(v *AttributeGroup) {
 	if _, ok := gen.StructAST[v.Name]; !ok {
 		content := " struct {\n"
 		fieldName := genGoFieldName(v.Name, true)
-		if fieldName != v.Name {
+		if gen.EmitXMLName && fieldName != v.Name {
 			gen.ImportEncodingXML = true
 			content += fmt.Sprintf("\tXMLName\txml.Name\t`xml:\"%s\"`\n", v.Name)
 		}
