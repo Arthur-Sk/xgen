@@ -39,12 +39,8 @@ func (gen *CodeGenerator) buildValidateTag(base string, r *Restriction, optional
 	if r == nil {
 		return ""
 	}
-	// Determine existence of any rule
-	has := len(r.Enum) > 0 || r.PatternStr != "" || r.HasLength || r.HasMinLength || r.HasMaxLength || r.HasMin || r.HasMax
-	if !has {
-		return ""
-	}
-	rules := make([]string, 0, 6)
+	// Build rules first, then decide if we should keep them.
+	rules := make([]string, 0, 8)
 	// Optional fields: prefix with omitempty to skip validation if empty/nil
 	if optional {
 		rules = append(rules, "omitempty")
@@ -102,7 +98,8 @@ func (gen *CodeGenerator) buildValidateTag(base string, r *Restriction, optional
 			}
 		}
 	}
-	if len(rules) == 0 {
+	// If there are no rules or only a single 'omitempty', drop the validate tag entirely
+	if len(rules) == 0 || (len(rules) == 1 && rules[0] == "omitempty") {
 		return ""
 	}
 	if isSlice {
@@ -123,9 +120,7 @@ func (gen *CodeGenerator) ensureReferencedTypesDeclared() {
 		declared[genGoFieldName(k, false)] = true // Go name (e.g., TStateCode)
 	}
 	// Scan gen.Field for type identifiers
-	// Look for patterns like '*TName', '[]TName', ' TName ', '\tTName\t'
 	candidates := map[string]bool{}
-	// Simple scan by splitting on non-letter/digit/underscore characters
 	sep := func(r rune) bool {
 		return !(r == '_' || (r >= '0' && r <= '9') || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z'))
 	}
@@ -135,14 +130,18 @@ func (gen *CodeGenerator) ensureReferencedTypesDeclared() {
 		}
 	}
 	for name := range candidates {
+		// Skip when already declared or will be declared (by Go name) in this file
 		if declared[name] || declared[strings.ToLower(name[:1])+name[1:]] {
 			continue
 		}
-		// Skip built-ins masked as T* (none), and skip xml.Name etc.
+		if strings.Contains(gen.Field, "type "+name+" ") {
+			continue
+		}
+		// Skip built-ins and known non-types
 		if goBuildinType[name] {
 			continue
 		}
-		// Declare a simple alias to string
+		// Declare a simple alias to string for unresolved references only
 		content := fmt.Sprintf(" string\n")
 		gen.StructAST[name] = content
 		fieldName := genGoFieldName(name, true)
@@ -409,7 +408,7 @@ func (gen *CodeGenerator) GoComplexType(v *ComplexType) {
 			if vtag != "" {
 				tag += fmt.Sprintf(" validate:\"%s\"", vtag)
 			}
-			content += fmt.Sprintf("\t%sAttr\t%s\t`%s`\n", genGoFieldName(attribute.Name, false), fieldType, tag)
+			content += fmt.Sprintf("\t%s\t%s\t`%s`\n", genGoFieldName(attribute.Name, false), fieldType, tag)
 		}
 		for _, group := range v.Groups {
 			// Ensure named types referenced by group elements
@@ -572,7 +571,7 @@ func (gen *CodeGenerator) GoAttributeGroup(v *AttributeGroup) {
 			if vtag != "" {
 				tag += fmt.Sprintf(" validate:\"%s\"", vtag)
 			}
-			content += fmt.Sprintf("\t%sAttr\t%s\t`%s`\n", genGoFieldName(attribute.Name, false), genGoFieldType(base), tag)
+			content += fmt.Sprintf("\t%s\t%s\t`%s`\n", genGoFieldName(attribute.Name, false), genGoFieldType(base), tag)
 		}
 		content += "}\n"
 		gen.StructAST[v.Name] = content
@@ -818,13 +817,15 @@ func (gen *CodeGenerator) generateComplexTypeValidator(typeName string, v *Compl
 		if !hasRestrictions(&r) {
 			continue
 		}
-		fieldName := genGoFieldName(a.Name, false) + "Attr"
+		fieldName := genGoFieldName(a.Name, false)
 		base := getBasefromSimpleType(trimNSPrefix(a.Type), gen.ProtoTree)
 		if a.Optional {
-			fmt.Fprintf(&b, "\tif m.%s != nil {\n", fieldName)
 			checks := gen.generateRestrictionChecks("*m."+fieldName, base, fieldName, &r)
-			b.WriteString(checks)
-			b.WriteString("\t}\n")
+			if len(checks) > 0 {
+				fmt.Fprintf(&b, "\tif m.%s != nil {\n", fieldName)
+				b.WriteString(checks)
+				b.WriteString("\t}\n")
+			}
 		} else {
 			checks := gen.generateRestrictionChecks("m."+fieldName, base, fieldName, &r)
 			b.WriteString(checks)
@@ -839,15 +840,19 @@ func (gen *CodeGenerator) generateComplexTypeValidator(typeName string, v *Compl
 		fieldName := genGoFieldName(e.Name, false)
 		base := getBasefromSimpleType(trimNSPrefix(e.Type), gen.ProtoTree)
 		if e.Plural {
-			fmt.Fprintf(&b, "\tfor _, it := range m.%s {\n", fieldName)
 			checks := gen.generateRestrictionChecks("it", base, fieldName, &r)
-			b.WriteString(checks)
-			b.WriteString("\t}\n")
+			if len(checks) > 0 {
+				fmt.Fprintf(&b, "\tfor _, it := range m.%s {\n", fieldName)
+				b.WriteString(checks)
+				b.WriteString("\t}\n")
+			}
 		} else if e.Optional {
-			fmt.Fprintf(&b, "\tif m.%s != nil {\n", fieldName)
 			checks := gen.generateRestrictionChecks("*m."+fieldName, base, fieldName, &r)
-			b.WriteString(checks)
-			b.WriteString("\t}\n")
+			if len(checks) > 0 {
+				fmt.Fprintf(&b, "\tif m.%s != nil {\n", fieldName)
+				b.WriteString(checks)
+				b.WriteString("\t}\n")
+			}
 		} else {
 			checks := gen.generateRestrictionChecks("m."+fieldName, base, fieldName, &r)
 			b.WriteString(checks)
