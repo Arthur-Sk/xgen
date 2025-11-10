@@ -34,6 +34,10 @@ type CodeGenerator struct {
 	EmitXMLName       bool              // When true, emit XMLName xml.Name fields (default true)
 }
 
+func (gen *CodeGenerator) isRegexAttrEnabled() bool {
+	return false
+}
+
 // buildValidateTag builds a go-playground/validator tag string for the given
 // restriction and base type. If no rules, returns an empty string.
 func (gen *CodeGenerator) buildValidateTag(base string, r *Restriction, optional bool, isSlice bool) string {
@@ -59,7 +63,7 @@ func (gen *CodeGenerator) buildValidateTag(base string, r *Restriction, optional
 				rules = append(rules, fmt.Sprintf("max=%d", r.MaxLength))
 			}
 		}
-		if r.PatternStr != "" {
+		if gen.isRegexAttrEnabled() && r.PatternStr != "" {
 			// Anchor the regex to match the whole string; users can still override
 			pattern := r.PatternStr
 			if len(pattern) > 0 {
